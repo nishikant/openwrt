@@ -1,0 +1,33 @@
+#!/bin/sh /etc/rc.common
+START=99
+USE_PROCD=1
+
+SERVICE="tune-root"
+LOG="/root/resize.log"
+STEP1="/root/.resize-step1"
+STEP2="/root/.resize-step2"
+
+log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
+
+start_service() {
+    [ ! -f "$STEP1" ] && { log "Stage1 not complete. Skipping."; /etc/init.d/$SERVICE disable; return 1; }
+    [ -f "$STEP2" ] && { log "Stage2 already done, exiting"; /etc/init.d/$SERVICE disable; return 0; }
+
+    ROOT_DEV=$(lsblk -rno NAME,MOUNTPOINT | awk '$2=="/"{print "/dev/"$1}')
+
+    log "Stage2: remount root as readonly"
+    mount -o remount,ro /
+    tune2fs -O^resize_inode "$ROOT_DEV" || log "⚠ tune2fs failed (ignored)"
+    fsck.ext4 -y "$ROOT_DEV" || log "⚠ fsck returned errors (ignored)"
+
+    mount -o remount,rw /
+
+    log "Stage2: remount root as readwrite done $?"
+    log "Running tune2fs -O^resize_inode $ROOT_DEV done"
+    log "Running fsck.ext4 -y $ROOT_DEV done"
+    touch "$STEP2"; 
+    log "Stage2 complete. Rebooting."
+    /etc/init.d/$SERVICE disable
+    /etc/init.d/resize2fs-root enable
+    reboot
+}

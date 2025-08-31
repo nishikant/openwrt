@@ -1,0 +1,33 @@
+#!/bin/sh /etc/rc.common
+START=99
+USE_PROCD=1
+
+SERVICE="resize2fs-root"
+LOG="/root/resize.log"
+STEP2="/root/.resize-step2"
+STEP3="/root/.resize-step3"
+
+log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
+
+start_service() {
+    [ ! -f "$STEP2" ] && { log "Stage2 not complete. Skipping."; /etc/init.d/$SERVICE disable; return 1; }
+    [ -f "$STEP3" ] && { log "Stage3 already done, exiting"; /etc/init.d/$SERVICE disable; return 0; }
+
+    ROOT_DEV=$(lsblk -rno NAME,MOUNTPOINT | awk '$2=="/"{print "/dev/"$1}')
+
+    log "Running resize2fs $ROOT_DEV"
+    if resize2fs "$ROOT_DEV"; then
+        sync; touch "$STEP3"; sync
+        log "Stage3 complete. Rebooting."
+        /etc/init.d/$SERVICE disable
+	/etc/init.d/resize-root enable
+	sleep 1
+	sync
+        reboot
+    else
+        log "❌ resize2fs failed"
+        /etc/init.d/$SERVICE disable
+        return 1
+    fi
+}
+

@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+START=99
+USE_PROCD=1
+
+SERVICE="resize-root"
+LOG="/root/resize.log"
+STEP1="/root/.resize-step1"
+
+log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
+
+start_service() {
+    [ -f "$STEP1" ] && { log "Stage1 already done, exiting"; return 0; }
+
+    ROOT_DEV=$(lsblk -rno NAME,MOUNTPOINT | awk '$2=="/"{print "/dev/"$1}')
+    PKNAME=$(lsblk -no PKNAME "$ROOT_DEV")
+    DISK="/dev/$PKNAME"
+    PART_NUM=$(echo "$ROOT_DEV" | grep -o '[0-9]*$')
+
+    log "Stage1: extending partition with sfdisk"
+    if printf ", +" | sfdisk --force --no-reread -N "$PART_NUM" "$DISK"; then
+        sync; touch "$STEP1"; sync
+        log "Stage1 complete. Rebooting."
+        /etc/init.d/$SERVICE disable
+	/etc/init.d/tune-root enable
+        reboot
+    else
+        log "❌ Stage1 failed"
+        /etc/init.d/$SERVICE disable
+    fi
+}
