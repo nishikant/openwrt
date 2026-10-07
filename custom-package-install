@@ -11,31 +11,52 @@ log() {
     echo "[$(date '+%F %T')] $*" | tee -a "$LOG"
 }
 
+wait_for_internet() {
+    log "Waiting for Internet connectivity..."
+
+    MAX_TRIES=24
+    TRY=1
+
+    while [ "$TRY" -le "$MAX_TRIES" ]; do
+        if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 &&
+           ping -c 1 -W 2 apk.openwrt.org >/dev/null 2>&1; then
+            log "Internet is available."
+            return 0
+        fi
+
+        log "Internet not available, retry $TRY/$MAX_TRIES..."
+        sleep 1
+        TRY=$((TRY + 1))
+    done
+
+    log "Internet did not become available."
+    return 1
+}
+
 start_service() {
     log "Running custom-package-install"
 
     if [ -f "$STEP3" ]; then
         log "Stage3 complete. Installing packages."
 
-        # Disable this service so it doesn't run again
         /etc/init.d/"$SERVICE" disable
 
-        # Update package index
+        if ! wait_for_internet; then
+            log "Skipping package installation because Internet is unavailable."
+            return 1
+        fi
+
         log "Running apk update..."
         if ! apk update >> "$LOG" 2>&1; then
             log "apk update failed"
             return 1
         fi
 
-        # Install minidlna
         log "Installing luci-app-minidlna..."
         if ! apk add luci-app-minidlna >> "$LOG" 2>&1; then
             log "Failed to install luci-app-minidlna"
             return 1
         fi
-
-        # Add more packages if needed
-        # apk add package1 package2
 
         sync
         log "Package installation completed."
