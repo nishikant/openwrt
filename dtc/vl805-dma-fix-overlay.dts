@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * pcie1 maps every CPU physical address to bus address phys_addr + 2^36.
+ * A controller quirked to a <= 36-bit DMA mask (e.g. VIA VL805/806) can
+ * never reach any system memory here through that window alone.
+ *
+ * Add a second window covering all installed RAM at offset zero instead,
+ * listed first. Every dma_alloc_coherent() call for any device on this
+ * port then resolves through the zero-offset window. This approach needs
+ * no dedicated pool, no bounce buffering, and no restricted-dma-pool/
+ * SWIOTLB dependency, since ordinary system memory is used directly,
+ * in place.
+ *
+ * Sized to 16 GiB (covers every current RPi5 RAM configuration) and
+ * must be a power of two - bcm2712 (soc_base = BCM7712) requires this
+ * per window, though windows don't need to share size/alignment with
+ * each other. dev->dma_range_map is built straight from this property
+ * (of_dma_configure_id() resolves it via pcie1's own node), so this
+ * takes effect for every device on the port with no per-endpoint
+ * binding required.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target = <&pcie1>;
+		__overlay__ {
+			status = "okay";
+
+			dma-ranges =
+				<0x03000000 0x00 0x00000000  0x00 0x00000000  0x04 0x00000000>,
+				<0x03000000 0x10 0x00000000 0x00 0x00000000 0x10 0x00000000>,
+				<0x03000000 0xff 0xfffff000 0x10 0x00131000 0x00 0x00001000>;
+		};
+	};
+};
+

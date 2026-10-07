@@ -20,9 +20,10 @@ start_service() {
         sync; touch "$STEP3"; sync
         log "Stage3 complete. Rebooting."
         /etc/init.d/$SERVICE disable
-	/etc/init.d/resize-root enable
-	sleep 1
-	sync
+        /etc/init.d/resize-root enable
+        /etc/init.d/custom-package-install enable
+        sleep 1
+        sync
         reboot
     else
         log "❌ resize2fs failed"
@@ -30,4 +31,3 @@ start_service() {
         return 1
     fi
 }
-

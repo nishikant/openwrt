@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+START=99
+USE_PROCD=1
+
+SERVICE="custom-package-install"
+LOG="/root/custom-package-install.log"
+
+log() { echo "[$(date '+%F %T')] $*" | tee -a "$LOG"; }
+
+start_service() {
+    log "Running custom-package-install"
+        log "Stage3 complete. Rebooting."
+        /etc/init.d/$SERVICE disable
+
+        # Install minidlna
+        apk update
+        sleep 1
+        apk add luci-app-minidlna
+
+        # Add more packages if needed
+
+        sleep 1
+	sync
+    else
+        log "❌ custom-package-install failed"
+        /etc/init.d/$SERVICE disable
+        return 1
+    fi
+}
+
