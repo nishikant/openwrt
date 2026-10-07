@@ -19,7 +19,7 @@ wait_for_internet() {
 
     while [ "$TRY" -le "$MAX_TRIES" ]; do
         if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 &&
-           ping -c 1 -W 2 apk.openwrt.org >/dev/null 2>&1; then
+           ping -c 1 -W 2 google.com >/dev/null 2>&1; then
             log "Internet is available."
             return 0
         fi
