@@ -57,6 +57,11 @@ start_service() {
             log "Failed to install luci-app-minidlna"
             return 1
         fi
+        log "Installing hdparm..."
+        if ! apk add hdparm >> "$LOG" 2>&1; then
+          log "Failed to install hdparm"
+          return 1
+        fi
 
         sync
         log "Package installation completed."
