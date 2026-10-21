@@ -57,9 +57,18 @@ start_service() {
             log "Failed to install luci-app-minidlna"
             return 1
         fi
+        /etc/init.d/minidlna stop
+        /etc/init.d/minidlna disable
+
         log "Installing hdparm..."
         if ! apk add hdparm >> "$LOG" 2>&1; then
           log "Failed to install hdparm"
+          return 1
+        fi
+
+        log "Installing obfs4proxy..."
+        if ! apk add obfs4proxy >> "$LOG" 2>&1; then
+          log "Failed to install obfs4proxy"
           return 1
         fi
 
