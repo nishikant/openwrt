@@ -72,6 +72,12 @@ start_service() {
           return 1
         fi
 
+        log "Installing luci-app-mwan3..."
+        if ! apk add luci-app-mwan3 >> "$LOG" 2>&1; then
+          log "Failed to install luci-app-mwan3"
+          return 1
+        fi
+
         sync
         log "Package installation completed."
 
